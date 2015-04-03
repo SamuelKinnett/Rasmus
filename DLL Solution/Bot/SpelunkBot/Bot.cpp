@@ -1,3 +1,5 @@
+//Rasmus, a Spelunkbot programmed by Samuel Kinnett
+
 // SpelunkBot.cpp : Defines the exported functions for the DLL application.
 //
 
@@ -100,11 +102,11 @@ SPELUNKBOT_API double Update(double posX, double posY)
 	UpdateMovementVariables(posX, posY, pixelPosX, pixelPosY);
 	//UpdateStatusVariables();
 
-	_jump = false;
+	if (!IsNodePassable(posX, posY + 1, NODE_COORDS))
+		_jump = false;
 	if (_waitTimer > 0)
 		--_waitTimer;
 
-	//TODO: fix combat and waiting
 	#pragma region Wait for Events
 
 	if (_waitTimer > 0)
@@ -125,7 +127,7 @@ SPELUNKBOT_API double Update(double posX, double posY)
 
 		if (IsEnemyInNode(posX + 1, posY, NODE_COORDS) || IsEnemyInNode(posX - 1, posY, NODE_COORDS))
 		{
-			//Attack
+			_attack = true;
 			_waitTimer = 10;
 		}
 		return 1;
@@ -133,7 +135,6 @@ SPELUNKBOT_API double Update(double posX, double posY)
 
 	#pragma endregion 
 
-	//TODO: Everything
 	#pragma region Navigate
 
 	//Does Apsalus have a goal?
@@ -159,6 +160,7 @@ SPELUNKBOT_API double Update(double posX, double posY)
 
 		//If we haven't found the exit, navigate normally
 		Navigate(posX, posY);
+
 		//AttackEnemies
 	}
 	else

@@ -23,7 +23,7 @@ DICE GAMES LOST:    0
 
 LEVEL        DEATHS
 ------------+------------
- 1          | 341
+ 1          | 342
  2          | 17
  3          | 6
  4          | 8
@@ -40,12 +40,12 @@ LEVEL        DEATHS
  15         | 1
  16         | 4
 ------------+------------
- TOTAL      | 409
+ TOTAL      | 410
 
 ENEMY        DEATHS
 ------------+------------
  ???        | 0
- SNAKE      | 5
+ SNAKE      | 6
  SPIDER     | 6
  ???        | 0
  CAVEMAN    | 1
