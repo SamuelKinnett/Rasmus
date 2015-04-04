@@ -115,6 +115,7 @@ SPELUNKBOT_API double Update(double posX, double posY)
 
 	UpdateMovementVariables(posX, posY, pixelPosX, pixelPosY);
 	//UpdateStatusVariables();
+	PopulateGoldMap();
 
 	if (!IsNodePassable(posX, posY + 1, NODE_COORDS))
 		_jump = false;
@@ -177,6 +178,7 @@ SPELUNKBOT_API double Update(double posX, double posY)
 			std::cout << "Goal Reached" << std::endl;
 			targetX = 0;
 			targetY = 0;
+			goldSquares[(int)posX][(int)posY] = 0;
 			return 1;
 		}
 		//otherwise, let's move towards the next node in the path
@@ -186,7 +188,7 @@ SPELUNKBOT_API double Update(double posX, double posY)
 		if (outputTicks % 5 == 0)
 			std::cout << "Target X = " << tempTargetX << "\t" << "Target Y = " << tempTargetY << std::endl;
 
-		if (posX < tempTargetX)
+		if (posX < tempTargetX + 0.5)
 		{
 			if (canJumpGrabRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 2))
 				JumpGrab(RIGHT);
@@ -232,18 +234,18 @@ SPELUNKBOT_API double Update(double posX, double posY)
 
 		//Let's not forget the Y-axis!
 
-		if (posY < tempTargetY)
+		if (posY < tempTargetY + 0.5)
 		{
 			_jump = true;
 		}
 
-		//Finally, update the pathfinding every 20 ticks to prevent the bot getting stuck in stupid places
+		//Finally, update the pathfinding every 30 ticks to prevent the bot getting stuck in stupid places
 		if (ticks == 0)
 		{
 			if (!_spIsInAir)
 			{
 				Pathfind(posX, posY, targetX, targetY);
-				ticks = 20;
+				ticks = 30;
 			}
 		}
 		else
@@ -302,6 +304,29 @@ void UpdateStatusVariables()
 	_waitTimer = GetWaitTimer();
 	_headingRight = GetHeadingRight();
 	_headingLeft = GetHeadingLeft();
+}
+
+// This method updates the goldSquares array such that it represents the current gold layout, with 1 being gold and 0 being anything else
+void PopulateGoldMap()
+{
+	for (int y = 0; y < Y_NODES; y++)
+	{
+		for (int x = 0; x < X_NODES; x++)
+		{
+			if ((NumberOfCollectableTypeInNode(spGoldBar, x, y, NODE_COORDS) != 0
+				|| NumberOfCollectableTypeInNode(spGoldBars, x, y, NODE_COORDS) != 0
+				|| NumberOfCollectableTypeInNode(spGoldNugget, x, y, NODE_COORDS) != 0)
+				&& visitedSquares[x][y] != 1
+				&& IsNodePassable(x, y, NODE_COORDS))
+
+				goldSquares[x][y] = 1;
+
+			else
+
+				goldSquares[x][y] = 0;
+
+		}
+	}
 }
 
 #pragma endregion
@@ -472,26 +497,50 @@ bool FindExit(double posX, double posY)
 	return false;
 }
 
-// This method searches for gold. If it finds any it will return true, otherwise it will return false
+// This method searches for the nearest gold. If it finds any it will return true, otherwise it will return false
 bool FindGold(double posX, double posY)
 {
+	int currentClosestX;
+	int currentClosestY;
+	int currentDistance = -1;
+	double distance;
+	bool goldFound = false;
+
 	for (int y = 0; y < Y_NODES; y++)
 	{
 		for (int x = 0; x < X_NODES; x++)
 		{
-			if ((NumberOfCollectableTypeInNode(spGoldBar, x, y, NODE_COORDS) != 0
-				|| NumberOfCollectableTypeInNode(spGoldBars, x, y, NODE_COORDS) != 0
-				|| NumberOfCollectableTypeInNode(spGoldNugget, x, y, NODE_COORDS) != 0)
-				&& visitedSquares[x][y] != 1
-				&& IsNodePassable(x, y, NODE_COORDS))
+			if (goldSquares[x][y] == 1)
 			{
-				std::cout << "Gold found!" << std::endl;
-				targetX = x;
-				targetY = y;
-				Pathfind(posX, posY, targetX, targetY);
-				return true;
+				goldFound = true;
+
+				distance = sqrt(pow(posX - x, 2) + pow(posY - y, 2));
+
+				if (currentDistance == -1)
+				{
+					currentClosestX = x;
+					currentClosestY = y;
+					currentDistance = distance;
+				}
+				else if (distance < currentDistance)
+				{
+					currentClosestX = x;
+					currentClosestY = y;
+					currentDistance = distance;
+				}
 			}
 		}
+	}
+
+	if (goldFound)
+	{
+		std::cout << "Gold Found at X = " << targetX << " Y = " << targetY << std::endl;
+
+		_hasGoal = true;
+		targetX = currentClosestX;
+		targetY = currentClosestY;
+		Pathfind(posX, posY, targetX, targetY);
+		return true;
 	}
 
 	return false;

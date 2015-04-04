@@ -1,46 +1,48 @@
-﻿Build started 04/04/2015 15:58:33.
+﻿Build started 04/04/2015 16:46:54.
      1>Project "C:\Users\Samuel\Documents\GitHub\Rasmus\DLL Solution\Bot\SpelunkBot\SpelunkBot.vcxproj" on node 2 (Build target(s)).
      1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120\Microsoft.CppBuild.targets(364,5): warning MSB8004: Output Directory does not end with a trailing slash.  This build instance will add the slash as it is required to allow proper evaluation of the Output Directory.
      1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120\Microsoft.CppBuild.targets(388,5): warning MSB8028: The intermediate directory (Release\) contains files shared from another project (SpelunkBot.vcxproj).  This can lead to incorrect clean and rebuild behavior.
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /O2 /Oi /Oy- /GL /D WIN32 /D NDEBUG /D _WINDOWS /D _USRDLL /D SPELUNKBOT_EXPORTS /D _WINDLL /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Yu"stdafx.h" /Fp"Release\Bot.pch" /Fo"Release\\" /Fd"Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt Bot.cpp
          Bot.cpp
-     1>Bot.cpp(191): warning C4551: function call missing argument list
      1>Bot.cpp(193): warning C4551: function call missing argument list
      1>Bot.cpp(195): warning C4551: function call missing argument list
-     1>Bot.cpp(201): warning C4551: function call missing argument list
+     1>Bot.cpp(197): warning C4551: function call missing argument list
      1>Bot.cpp(203): warning C4551: function call missing argument list
      1>Bot.cpp(205): warning C4551: function call missing argument list
-     1>Bot.cpp(212): warning C4551: function call missing argument list
+     1>Bot.cpp(207): warning C4551: function call missing argument list
      1>Bot.cpp(214): warning C4551: function call missing argument list
      1>Bot.cpp(216): warning C4551: function call missing argument list
-     1>Bot.cpp(221): warning C4551: function call missing argument list
+     1>Bot.cpp(218): warning C4551: function call missing argument list
      1>Bot.cpp(223): warning C4551: function call missing argument list
      1>Bot.cpp(225): warning C4551: function call missing argument list
-     1>Bot.cpp(294): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
-     1>Bot.cpp(295): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
+     1>Bot.cpp(227): warning C4551: function call missing argument list
      1>Bot.cpp(296): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
      1>Bot.cpp(297): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
-     1>Bot.cpp(300): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
-     1>Bot.cpp(301): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
+     1>Bot.cpp(298): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
+     1>Bot.cpp(299): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
+     1>Bot.cpp(302): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
      1>Bot.cpp(303): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
-     1>Bot.cpp(304): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
-     1>Bot.cpp(344): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
-     1>Bot.cpp(351): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
-     1>Bot.cpp(358): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
-     1>Bot.cpp(364): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
-     1>Bot.cpp(402): warning C4551: function call missing argument list
-     1>Bot.cpp(404): warning C4551: function call missing argument list
-     1>Bot.cpp(406): warning C4551: function call missing argument list
-     1>Bot.cpp(411): warning C4551: function call missing argument list
-     1>Bot.cpp(413): warning C4551: function call missing argument list
-     1>Bot.cpp(415): warning C4551: function call missing argument list
-     1>Bot.cpp(423): warning C4551: function call missing argument list
-     1>Bot.cpp(425): warning C4551: function call missing argument list
+     1>Bot.cpp(305): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
+     1>Bot.cpp(306): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
+     1>Bot.cpp(369): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
+     1>Bot.cpp(376): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
+     1>Bot.cpp(383): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
+     1>Bot.cpp(389): warning C4800: 'double' : forcing value to bool 'true' or 'false' (performance warning)
      1>Bot.cpp(427): warning C4551: function call missing argument list
-     1>Bot.cpp(433): warning C4551: function call missing argument list
-     1>Bot.cpp(435): warning C4551: function call missing argument list
-     1>Bot.cpp(437): warning C4551: function call missing argument list
+     1>Bot.cpp(429): warning C4551: function call missing argument list
+     1>Bot.cpp(431): warning C4551: function call missing argument list
+     1>Bot.cpp(436): warning C4551: function call missing argument list
+     1>Bot.cpp(438): warning C4551: function call missing argument list
+     1>Bot.cpp(440): warning C4551: function call missing argument list
+     1>Bot.cpp(448): warning C4551: function call missing argument list
+     1>Bot.cpp(450): warning C4551: function call missing argument list
+     1>Bot.cpp(452): warning C4551: function call missing argument list
+     1>Bot.cpp(458): warning C4551: function call missing argument list
+     1>Bot.cpp(460): warning C4551: function call missing argument list
+     1>Bot.cpp(462): warning C4551: function call missing argument list
+     1>Bot.cpp(523): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>Bot.cpp(529): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"..\..\..\Source\spelunky_1_1\Bot.dll" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"..\..\..\Source\spelunky_1_1\Bot.pdb" /SUBSYSTEM:WINDOWS /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"..\..\..\Source\spelunky_1_1\Bot.lib" /MACHINE:X86 /SAFESEH /DLL Release\dllmain.obj
          Release\Bot.obj
@@ -53,4 +55,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:01.07
+Time Elapsed 00:00:01.05
