@@ -80,6 +80,15 @@ bool CanJumpLeft(double posX, double posY);
 bool CanJumpRight(double posX, double posY);
 bool CanJumpGrabLeft(double posX, double posY);
 bool CanJumpGrabRight(double posX, double posY);
+bool SquareVisited(double posX, double posY);
+
+bool FindExit(double posX, double posY);
+bool FindGold(double posX, double posY);
+
+void Walk(double direction);
+void Jump(double direction);
+void JumpGrab(double direction);
+void ChangeDirection(double direction);
 
 #pragma endregion
 

@@ -5,6 +5,7 @@
 
 #include "stdafx.h"
 #include "Bot.h"
+#include <math.h>
 
 #pragma region Defines
 
@@ -23,6 +24,10 @@
 #define BOOLEAN 0
 #define DOUBLE 1
 #define STRING 2
+
+// Directions, used for naviagtion
+#define LEFT 0
+#define RIGHT 1
 
 #pragma endregion
 
@@ -46,6 +51,9 @@ int targetX;			//The current X co-ordinate the bot is trying to reach
 int targetY;			//The current Y co-ordinate the bot is trying to reach
 
 int outputTicks;		//To stop the constant fucking stream of console updates
+
+int visitedSquares[X_NODES][Y_NODES];	//Stores what squares the bot has visited
+int goldSquares[X_NODES][Y_NODES];		//Stores what squares contain gold
 
 #pragma endregion
 
@@ -83,13 +91,19 @@ SPELUNKBOT_API double Initialise(void)
 
 SPELUNKBOT_API double Update(double posX, double posY)
 {
-	// Sample bot
+
+	#pragma region Update Variables
 
 	//ResetBotVariables();
+
+	//TODO: Stop the bot from always looking up
 
 	// Store bot positions
 	double pixelPosX = posX * 16;
 	double pixelPosY = posY * 16;
+
+	//Update visited squares
+	visitedSquares[(int)posX][(int)posY] = 1;
 
 	if (outputTicks == 0)
 	{
@@ -106,6 +120,8 @@ SPELUNKBOT_API double Update(double posX, double posY)
 		_jump = false;
 	if (_waitTimer > 0)
 		--_waitTimer;
+
+	#pragma endregion
 
 	#pragma region Wait for Events
 
@@ -133,7 +149,7 @@ SPELUNKBOT_API double Update(double posX, double posY)
 		return 1;
 	}
 
-	#pragma endregion 
+	#pragma endregion
 
 	#pragma region Navigate
 
@@ -141,22 +157,11 @@ SPELUNKBOT_API double Update(double posX, double posY)
 	if (!_hasGoal)
 	{
 		//If not, let's look for the exit
-		for (int y = 0; y < Y_NODES; y++)
-		{
-			for (int x = 0; x < X_NODES; x++)
-			{
-				//Aparrently the entrance is actually the exit.
-				if (GetNodeState(x, y, NODE_COORDS) == spExit)
-				{
-					//If we have found the exit, pathfind to it
-					std::cout << "Exit found!";
-					targetX = x;
-					targetY = y;
-					Pathfind(posX, posY, targetX, targetY);
-					return 1;
-				}
-			}
-		}
+		if (FindExit(posX, posY))
+			return 1;
+		//Otherwise, let's look for GOLD!
+		if (FindGold(posX, posY))
+			return 1;
 
 		//If we haven't found the exit, navigate normally
 		Navigate(posX, posY);
@@ -165,26 +170,63 @@ SPELUNKBOT_API double Update(double posX, double posY)
 	}
 	else
 	{
-		//if it does, let's move towards the next node in the path
+		//if we've reached the target, reset
+		if (floor (posX) == targetX && floor (posY) == targetY)
+		{
+			_hasGoal = false;
+			std::cout << "Goal Reached" << std::endl;
+			targetX = 0;
+			targetY = 0;
+			return 1;
+		}
+		//otherwise, let's move towards the next node in the path
 		double tempTargetX = GetNextPathXPos(pixelPosX, pixelPosY, PIXEL_COORDS);
 		double tempTargetY = GetNextPathYPos(pixelPosX, pixelPosY, PIXEL_COORDS);
 
-		std::cout << "Target X = " << tempTargetX << "\t" << "Target Y = " << tempTargetY << std::endl;
+		if (outputTicks % 5 == 0)
+			std::cout << "Target X = " << tempTargetX << "\t" << "Target Y = " << tempTargetY << std::endl;
 
 		if (posX < tempTargetX)
 		{
-			_headingRight = true;
-			_headingLeft = false;
-			_goRight = true;
-
+			if (canJumpGrabRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 2))
+				JumpGrab(RIGHT);
+			else if (canGoRight && IsWalkSpikeRight && !SquareVisited(posX + 1, posY))
+				Walk(RIGHT);
+			else if (canJumpRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 1))
+				Jump(RIGHT);
 			//TODO: Check for enemies
+			else
+			{
+				// If there are no 'new' routes to take
+				if (canJumpGrabRight && IsJumpSpikeRight)
+					JumpGrab(RIGHT);
+				else if (canGoRight && IsWalkSpikeRight)
+					Walk(RIGHT);
+				else if (canJumpRight && IsJumpSpikeRight)
+					Jump(RIGHT);
+				//TODO: Check for enemies
+			}
 		}
 		else
 		{
-			_headingLeft = true;
-			_headingRight = false;
-			_goLeft = true;
+			if (canJumpGrabLeft && IsJumpSpikeLeft && !SquareVisited(posX - 1, posY - 2))
+				JumpGrab(LEFT);
+			else if (canGoLeft && IsWalkSpikeLeft && !SquareVisited(posX - 1, posY))
+				Walk(LEFT);
+			else if (canJumpLeft && IsJumpSpikeLeft && !SquareVisited(posX - 1, posY - 1))
+				Jump(LEFT);
+			else
+			{
+				// If there are no 'new' routes to take
+				if (canJumpGrabLeft && IsJumpSpikeLeft)
+					JumpGrab(LEFT);
+				else if (canGoLeft && IsWalkSpikeLeft)
+					Walk(LEFT);
+				else if (canJumpLeft && IsJumpSpikeLeft)
+					Jump(LEFT);
 
+				//TODO: Check for enemies
+			}
 			//TODO: Check for enemies
 		}
 
@@ -195,13 +237,13 @@ SPELUNKBOT_API double Update(double posX, double posY)
 			_jump = true;
 		}
 
-		//Finally, update the pathfinding every 16 ticks to prevent the bot getting stuck in stupid places
+		//Finally, update the pathfinding every 20 ticks to prevent the bot getting stuck in stupid places
 		if (ticks == 0)
 		{
 			if (!_spIsInAir)
 			{
 				Pathfind(posX, posY, targetX, targetY);
-				ticks = 16;
+				ticks = 20;
 			}
 		}
 		else
@@ -230,7 +272,7 @@ void ResetBotVariables(void)
 
 #pragma region Update Variables
 
-//This method updates the terrain checking and available movement variables
+// This method updates the terrain checking and available movement variables
 void UpdateMovementVariables(double posX, double posY, double pixelPosX, double pixelPosY)
 {
 	walkSpikeLeft = IsWalkSpikeLeft(posX, posY);
@@ -246,7 +288,7 @@ void UpdateMovementVariables(double posX, double posY, double pixelPosX, double 
 	canJumpGrabRight = CanJumpGrabRight(posX, posY);
 }
 
-//This method updates the status variables about Apsalus' environment
+// This method updates the status variables about Apsalus' environment
 void UpdateStatusVariables()
 {
 	_hasGoal = GetHasGoal();
@@ -266,77 +308,85 @@ void UpdateStatusVariables()
 
 #pragma region Terrain Checks
 
-//NODE_COORDS: Returns true if walking left would result in hitting a spike
+// NODE_COORDS: Returns true if walking left would result in hitting a spike
 bool IsWalkSpikeLeft(double posX, double posY)
 {
 	return ((GetNodeState(posX - 1, posY, NODE_COORDS) == spSpike)
-		|| (GetNodeState(posX - 1, posY + 1, NODE_COORDS) == spSpike));
+		|| (GetNodeState(posX - 1, posY + 1, NODE_COORDS) == spSpike)
+		|| (GetNodeState(posX - 1, posY + 2, NODE_COORDS) == spSpike));
 }
 
-//NODE_COORDS: Returns true if walking right would result in hitting a spike
+// NODE_COORDS: Returns true if walking right would result in hitting a spike
 bool IsWalkSpikeRight(double posX, double posY)
 {
 	return ((GetNodeState(posX + 1, posY, NODE_COORDS) == spSpike)
-		|| (GetNodeState(posX + 1, posY + 1, NODE_COORDS) == spSpike));
+		|| (GetNodeState(posX + 1, posY + 1, NODE_COORDS) == spSpike)
+		|| (GetNodeState(posX + 1, posY + 2, NODE_COORDS) == spSpike));
 }
 
-//NODE_COORDS: Returns true if jumping left would result in hitting a spike
+// NODE_COORDS: Returns true if jumping left would result in hitting a spike
 bool IsJumpSpikeLeft(double posX, double posY)
 {
 	return ((GetNodeState(posX - 3, posY, NODE_COORDS) == spSpike)
 		|| (GetNodeState(posX - 3, posY + 1, NODE_COORDS) == spSpike));
 }
 
-//NODE_COORDS: Returns true if jumping right would result in hitting a spike
+// NODE_COORDS: Returns true if jumping right would result in hitting a spike
 bool IsJumpSpikeRight(double posX, double posY)
 {
 	return ((GetNodeState(posX + 3, posY, NODE_COORDS) == spSpike)
 		|| (GetNodeState(posX + 3, posY + 1, NODE_COORDS) == spSpike));
 }
 
-//PIXEL_COORDS: Returns true if the bot can walk left
+// PIXEL_COORDS: Returns true if the bot can walk left
 bool CanGoLeft(double posX, double posY)
 {
 	return IsNodePassable(posX - 16, posY, PIXEL_COORDS);
 	//Uses pixel coords for improved accuracy
 }
 
-//PIXEL_COORDS: Returns true if the bot can walk right
+// PIXEL_COORDS: Returns true if the bot can walk right
 bool CanGoRight(double posX, double posY)
 {
 	return IsNodePassable(posX + 16, posY, PIXEL_COORDS);
 	//Uses pixel coords for improved accuracy
 }
 
-//Returns true if the bot can jump left
+// Returns true if the bot can jump left
 bool CanJumpLeft(double posX, double posY)
 {
 	return IsNodePassable(posX - 1, posY - 1, NODE_COORDS);
 }
 
-//Returns true if the bot can jump right
+// Returns true if the bot can jump right
 bool CanJumpRight(double posX, double posY)
 {
 	return IsNodePassable(posX + 1, posY - 1, NODE_COORDS);
 }
 
-//Returns true if the bot can jump and grab a ledge to the left
+// Returns true if the bot can jump and grab a ledge to the left
 bool CanJumpGrabLeft(double posX, double posY)
 {
 	return (IsNodePassable(posX - 1, posY - 2, NODE_COORDS) && !IsNodePassable(posX - 1, posY - 1, NODE_COORDS) && IsNodePassable(posX, posY - 1, NODE_COORDS));
 }
 
-//Returns true if the bot can jump and grab a ledge to the right
+// Returns true if the bot can jump and grab a ledge to the right
 bool CanJumpGrabRight(double posX, double posY)
 {
 	return (IsNodePassable(posX + 1, posY - 2, NODE_COORDS) && !IsNodePassable(posX + 1, posY - 1, NODE_COORDS) && IsNodePassable(posX, posY - 1, NODE_COORDS));
+}
+
+// Returns true if the square at the passed in co-ordinates has previously been visited
+bool SquareVisited(double posX, double posY)
+{
+	return (visitedSquares[(int)posX][(int)posY] == 1);
 }
 
 #pragma endregion
 
 #pragma region Navigation
 
-//This method calls the pathfinding algorithm and updates the ticks variable
+// This method calls the pathfinding algorithm and updates the ticks variable
 void Pathfind(double posX, double posY, double x, double y)
 {
 	ticks = 16;
@@ -344,87 +394,51 @@ void Pathfind(double posX, double posY, double x, double y)
 	CalculatePathFromXYtoXY(posX, posY, x, y, NODE_COORDS);
 }
 
-//This method decides how the bot should move to navigate the environment
+// This method decides how the bot should move to navigate the environment
 void Navigate(double posX, double posY)
 {
 	if (_headingLeft)
 	{
-		if (canJumpGrabLeft && IsJumpSpikeLeft)
-		{
-			std::cout << "Jump grabbing left" << std::endl;
-			//jump grab to the left
-			_headingLeft = true;
-			_goLeft = true;
-			_goRight = false;
-			_jump = true;
-			isClimbing = true;
-			_waitTimer = 2;
-		}
-		else if (canGoLeft && IsWalkSpikeLeft)
-		{
-			std::cout << "Walking left" << std::endl;
-			//move left
-			_headingLeft = true;
-			_goLeft = true;
-			_goRight = false;
-		}
-		else if (canJumpLeft && IsJumpSpikeLeft)
-		{
-			std::cout << "Jumping left" << std::endl;
-			//jump to the left
-			_headingLeft = true;
-			_goLeft = true;
-			_goRight = false;
-			_jump = true;
-		}
+		if (canJumpGrabLeft && IsJumpSpikeLeft && !SquareVisited(posX - 1, posY - 2))
+			JumpGrab(LEFT);
+		else if (canGoLeft && IsWalkSpikeLeft && !SquareVisited(posX - 1, posY))
+			Walk(LEFT);
+		else if (canJumpLeft && IsJumpSpikeLeft && !SquareVisited(posX - 1, posY - 1))
+			Jump(LEFT);
 		else
 		{
-			//We can't head left, let's change our direction.
-			std::cout << "Changing direction from left to right" << std::endl;
-			_headingLeft = false;
-			_headingRight = true;
-			_goRight = true;
-			_goLeft = false;
+			// If there are no 'new' routes to take
+			if (canJumpGrabLeft && IsJumpSpikeLeft)
+				JumpGrab(LEFT);
+			else if (canGoLeft && IsWalkSpikeLeft)
+				Walk(LEFT);
+			else if (canJumpLeft && IsJumpSpikeLeft)
+				Jump(LEFT);
+			else
+				ChangeDirection(LEFT);
 		}
 	}
 	else if (_headingRight)
 	{
-		if (canJumpGrabRight && IsJumpSpikeRight)
-		{
-			std::cout << "Jump grabbing right" << std::endl;
-			//jump grab to the right
-			_headingRight = true;
-			_goRight = true;
-			_goLeft = false;
-			_jump = true;
-			isClimbing = true;
-			_waitTimer = 2;
-		}
-		else if (canGoRight && IsWalkSpikeRight)
-		{
-			std::cout << "Walking right" << std::endl;
-			//move right
-			_headingRight = true;
-			_goRight = true;
-			_goLeft = false;
-		}
-		else if (canJumpRight && IsJumpSpikeRight)
-		{
-			std::cout << "Jumping right" << std::endl;
-			//jump to the right
-			_headingRight = true;
-			_goRight = true;
-			_goLeft = false;
-			_jump = true;
-		}
+		if (canJumpGrabRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 2))
+			JumpGrab(RIGHT);
+		else if (canGoRight && IsWalkSpikeRight && !SquareVisited(posX + 1, posY))
+			Walk(RIGHT);
+		else if (canJumpRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 1))
+			Jump(RIGHT);
+		//TODO: Check for enemies
 		else
 		{
-			std::cout << "Changing direction from right to left" << std::endl;
-			//We can't head right, let's change our direction.
-			_headingRight = false;
-			_headingLeft = true;
-			_goLeft = true;
-			_goRight = false;
+			// If there are no 'new' routes to take
+			if (canJumpGrabRight && IsJumpSpikeRight)
+				JumpGrab(RIGHT);
+			else if (canGoRight && IsWalkSpikeRight)
+				Walk(RIGHT);
+			else if (canJumpRight && IsJumpSpikeRight)
+				Jump(RIGHT);
+			//TODO: Check for enemies
+			else
+				ChangeDirection(RIGHT);
 		}
 	}
 	else
@@ -433,6 +447,157 @@ void Navigate(double posX, double posY)
 			_headingLeft = true;
 		else
 			_headingRight = true;
+	}
+}
+
+// This method searches for the exit. If it finds the exit it will return true, otherwise it will return false
+bool FindExit(double posX, double posY)
+{
+	for (int y = 0; y < Y_NODES; y++)
+	{
+		for (int x = 0; x < X_NODES; x++)
+		{
+			if (GetNodeState(x, y, NODE_COORDS) == spExit)
+			{
+				//If we have found the exit, pathfind to it
+				std::cout << "Exit found!" << std::endl;
+				targetX = x;
+				targetY = y;
+				Pathfind(posX, posY, targetX, targetY);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+// This method searches for gold. If it finds any it will return true, otherwise it will return false
+bool FindGold(double posX, double posY)
+{
+	for (int y = 0; y < Y_NODES; y++)
+	{
+		for (int x = 0; x < X_NODES; x++)
+		{
+			if ((NumberOfCollectableTypeInNode(spGoldBar, x, y, NODE_COORDS) != 0
+				|| NumberOfCollectableTypeInNode(spGoldBars, x, y, NODE_COORDS) != 0
+				|| NumberOfCollectableTypeInNode(spGoldNugget, x, y, NODE_COORDS) != 0)
+				&& visitedSquares[x][y] != 1
+				&& IsNodePassable(x, y, NODE_COORDS))
+			{
+				std::cout << "Gold found!" << std::endl;
+				targetX = x;
+				targetY = y;
+				Pathfind(posX, posY, targetX, targetY);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+#pragma endregion
+
+#pragma region Movement
+
+// This method allows the bot to walk in the required direction
+void Walk(double direction)
+{
+	if (direction == RIGHT)
+	{
+		std::cout << "Walking right" << std::endl;
+		//move right
+		_headingLeft = false;
+		_headingRight = true;
+		_goRight = true;
+		_goLeft = false;
+	}
+	else
+	{
+		std::cout << "Walking left" << std::endl;
+		//move left
+		_headingRight = false;
+		_headingLeft = true;
+		_goLeft = true;
+		_goRight = false;
+	}
+}
+
+// This method allows the bot to jump in the required direction
+void Jump(double direction)
+{
+	if (direction == RIGHT)
+	{
+		std::cout << "Jumping right" << std::endl;
+		//jump to the right
+		_headingLeft = false;
+		_headingRight = true;
+		_goRight = true;
+		_goLeft = false;
+		_jump = true;
+	}
+	else
+	{
+		std::cout << "Jumping left" << std::endl;
+		//jump to the left
+		_headingRight = false;
+		_headingLeft = true;
+		_goLeft = true;
+		_goRight = false;
+		_jump = true;
+	}
+}
+
+// This method allows the bot to jump in the required direction and climb up a ledge
+void JumpGrab(double direction)
+{
+	if (direction == RIGHT)
+	{
+		std::cout << "Jump grabbing right" << std::endl;
+		//jump grab to the right
+		_headingLeft = false;
+		_headingRight = true;
+		_goRight = true;
+		_goLeft = false;
+		_jump = true;
+		isClimbing = true;
+		_waitTimer = 2;
+	}
+	else
+	{
+		std::cout << "Jump grabbing left" << std::endl;
+		//jump grab to the left
+		_headingRight = false;
+		_headingLeft = true;
+		_goLeft = true;
+		_goRight = false;
+		_jump = true;
+		isClimbing = true;
+		_waitTimer = 2;
+	}
+}
+
+// This method changes the bots direction to the opposite of the direction passed into the method
+void ChangeDirection(double direction)
+{
+	if (direction == RIGHT)
+	{
+		std::cout << "Changing direction from right to left" << std::endl;
+		//We can't head right, let's change our direction.
+		_headingRight = false;
+		_headingLeft = true;
+		_goLeft = true;
+		_goRight = false;
+	}
+	else
+	{
+		//We can't head left, let's change our direction.
+		std::cout << "Changing direction from left to right" << std::endl;
+		_headingLeft = false;
+		_headingRight = true;
+		_goRight = true;
+		_goLeft = false;
 	}
 }
 
