@@ -40,6 +40,8 @@ bool canJumpRight;		//Can the bot jump right?
 bool canJumpGrabLeft;	//Can the bot jump left and grab a ledge?
 bool canJumpGrabRight;	//Can the bot jump right and grab a ledge?
 
+int jumpTimer;			//used to ensure the bot holds the jump key to climb ledges.
+
 bool walkSpikeLeft;		//Will the bot hit a spike if he moves left?
 bool walkSpikeRight;	//Will the bot hit a spike if he moves right? 
 bool jumpSpikeLeft;		//Will the bot hit a spike if he jumps left?
@@ -102,7 +104,7 @@ SPELUNKBOT_API double Update(double posX, double posY)
 	double pixelPosX = posX * 16;
 	double pixelPosY = posY * 16;
 
-	//Update visited squares
+	// Update visited squares
 	visitedSquares[(int)posX][(int)posY] = 1;
 
 	if (outputTicks == 0)
@@ -113,14 +115,36 @@ SPELUNKBOT_API double Update(double posX, double posY)
 	else
 		--outputTicks;
 
+	// Reset goal if target reached
+	if (_hasGoal == true)
+	{
+		if (floor(posX) == targetX && floor(posY) == targetY)
+		{
+			_hasGoal = false;
+			std::cout << "Goal Reached" << std::endl;
+			targetX = 0;
+			targetY = 0;
+			goldSquares[(int)posX][(int)posY] = 0;
+			return 1;
+		}
+	}
+
 	UpdateMovementVariables(posX, posY, pixelPosX, pixelPosY);
 	//UpdateStatusVariables();
 	PopulateGoldMap();
 
-	if (!IsNodePassable(posX, posY + 1, NODE_COORDS))
+		if (jumpTimer == 0)
+	{
 		_jump = false;
-	if (_waitTimer > 0)
-		--_waitTimer;
+		if (_hasGoal)
+		{
+			Pathfind(posX, posY, targetX, targetY);
+			ticks = 30;
+		}
+		jumpTimer = -1;
+	}
+	else
+		jumpTimer--;
 
 	#pragma endregion
 
@@ -128,7 +152,6 @@ SPELUNKBOT_API double Update(double posX, double posY)
 
 	if (_waitTimer > 0)
 	{
-		//wallclimb check
 		if (isClimbing)
 		{
 			if (_headingRight)
@@ -138,15 +161,26 @@ SPELUNKBOT_API double Update(double posX, double posY)
 			_jump = true;
 			if (_waitTimer == 1)
 				isClimbing = false;
+
+			_waitTimer--;
+
+			return 1;
 		}
 
-		//waiting overridden by combat
+		if (_jump = false)
+		{
+			_goLeft = false;
+			_goRight = false;
+		}
+		--_waitTimer;
 
+		// Overriden by combat
 		if (IsEnemyInNode(posX + 1, posY, NODE_COORDS) || IsEnemyInNode(posX - 1, posY, NODE_COORDS))
 		{
 			_attack = true;
 			_waitTimer = 10;
 		}
+
 		return 1;
 	}
 
@@ -234,10 +268,12 @@ SPELUNKBOT_API double Update(double posX, double posY)
 
 		//Let's not forget the Y-axis!
 
+		/*
 		if (posY < tempTargetY + 0.5)
 		{
 			_jump = true;
 		}
+		*/
 
 		//Finally, update the pathfinding every 30 ticks to prevent the bot getting stuck in stupid places
 		if (ticks == 0)
@@ -262,8 +298,6 @@ SPELUNKBOT_API double Update(double posX, double posY)
 // Reset variables as required each frame
 void ResetBotVariables(void)
 {
-	_headingRight = false;
-	_headingLeft = false;
 	_goRight = false;
 	_goLeft = false;
 	_jump = false;
@@ -366,27 +400,31 @@ bool IsJumpSpikeRight(double posX, double posY)
 // PIXEL_COORDS: Returns true if the bot can walk left
 bool CanGoLeft(double posX, double posY)
 {
-	return IsNodePassable(posX - 16, posY, PIXEL_COORDS);
+	return (IsNodePassable(posX - 16, posY, PIXEL_COORDS)
+		&& !IsNodePassable(posX - 16, posY + 16, PIXEL_COORDS));
 	//Uses pixel coords for improved accuracy
 }
 
 // PIXEL_COORDS: Returns true if the bot can walk right
 bool CanGoRight(double posX, double posY)
 {
-	return IsNodePassable(posX + 16, posY, PIXEL_COORDS);
+	return (IsNodePassable(posX + 16, posY, PIXEL_COORDS)
+		&& !IsNodePassable(posX + 16, posY + 16, PIXEL_COORDS));
 	//Uses pixel coords for improved accuracy
 }
 
 // Returns true if the bot can jump left
 bool CanJumpLeft(double posX, double posY)
 {
-	return IsNodePassable(posX - 1, posY - 1, NODE_COORDS);
+	return (IsNodePassable(posX - 1, posY - 1, NODE_COORDS)
+		|| (IsNodePassable(posX - 1, posY, NODE_COORDS) && IsNodePassable(posX - 2, posY, NODE_COORDS)));
 }
 
 // Returns true if the bot can jump right
 bool CanJumpRight(double posX, double posY)
 {
-	return IsNodePassable(posX + 1, posY - 1, NODE_COORDS);
+	return (IsNodePassable(posX + 1, posY - 1, NODE_COORDS)
+		|| (IsNodePassable(posX + 1, posY, NODE_COORDS) && IsNodePassable(posX + 2, posY, NODE_COORDS)));
 }
 
 // Returns true if the bot can jump and grab a ledge to the left
@@ -585,6 +623,9 @@ void Jump(double direction)
 		_goRight = true;
 		_goLeft = false;
 		_jump = true;
+
+		jumpTimer = 10;
+		_waitTimer = 20;
 	}
 	else
 	{
@@ -595,6 +636,9 @@ void Jump(double direction)
 		_goLeft = true;
 		_goRight = false;
 		_jump = true;
+
+		jumpTimer = 10;
+		_waitTimer = 20;
 	}
 }
 
@@ -611,7 +655,7 @@ void JumpGrab(double direction)
 		_goLeft = false;
 		_jump = true;
 		isClimbing = true;
-		_waitTimer = 2;
+		_waitTimer = 3;
 	}
 	else
 	{
@@ -623,7 +667,7 @@ void JumpGrab(double direction)
 		_goRight = false;
 		_jump = true;
 		isClimbing = true;
-		_waitTimer = 2;
+		_waitTimer = 3;
 	}
 }
 
