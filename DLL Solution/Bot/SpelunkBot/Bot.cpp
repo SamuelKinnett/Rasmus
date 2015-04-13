@@ -229,6 +229,12 @@ SPELUNKBOT_API double Update(double posX, double posY)
 			goldSquares[(int)posX][(int)posY] = 0;
 			return 1;
 		}
+		//if the square isn't reachable, let's cancel the pathfinding
+		if (!IsSquareReachable(posX, posY, targetX, targetY))
+		{
+			_hasGoal = false;
+			return 0;
+		}
 		//otherwise, let's move towards the next node in the path
 		double tempTargetX = GetNextPathXPos(pixelPosX, pixelPosY, PIXEL_COORDS);
 		double tempTargetY = GetNextPathYPos(pixelPosX, pixelPosY, PIXEL_COORDS);
@@ -615,8 +621,8 @@ bool FindGold(double posX, double posY)
 	{
 		for (int x = 0; x < X_NODES; x++)
 		{
-			// If the square contains gold and has not yet been checked for reachability
-			if (reachableSquares[x][y] == 0 && goldSquares[x][y] == 1)
+			// If the square contains gold and has not yet been proven to be unreachable
+			if (reachableSquares[x][y] != 2 && goldSquares[x][y] == 1)
 			{
 				if (IsSquareReachable(posX, posY, x, y))
 					reachableSquares[x][y] = 2; // A value of 2 indicates that the square contains gold and is reachable
