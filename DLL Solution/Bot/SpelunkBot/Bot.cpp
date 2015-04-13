@@ -60,6 +60,7 @@ int outputTicks;		// To stop the constant fucking stream of console updates
 int visitedSquares[X_NODES][Y_NODES];	// Stores what squares the bot has visited
 int goldSquares[X_NODES][Y_NODES];		// Stores what squares contain gold
 int reachableSquares[X_NODES][Y_NODES]; // Stores what gold squares the bot can reach
+int refreshTimer;						// Used to refresh the reachable gold squares on a regular basis
 
 #pragma endregion
 
@@ -91,6 +92,8 @@ SPELUNKBOT_API double Initialise(void)
 
 	goalCurrentlyReachable = false;
 
+	refreshTimer = 0;
+
 	isJumping = false;
 	return 1;
 }
@@ -106,8 +109,6 @@ SPELUNKBOT_API double Update(double posX, double posY)
 
 	//ResetBotVariables();
 
-	//TODO: Stop the bot from always looking up
-
 	// Store bot positions
 	double pixelPosX = posX * 16;
 	double pixelPosY = posY * 16;
@@ -115,12 +116,11 @@ SPELUNKBOT_API double Update(double posX, double posY)
 	// Update visited squares
 	visitedSquares[(int)posX][(int)posY] = 1;
 
-	std::cout << "In air = " << _spIsInAir << std::endl;
-
+	// Output position
 	if (outputTicks == 0)
 	{
 		std::cout << "X = " << posX << "\t" << "Y = " << posY << std::endl;
-		outputTicks = 10;
+		outputTicks = 5;
 	}
 	else
 		--outputTicks;
@@ -137,6 +137,21 @@ SPELUNKBOT_API double Update(double posX, double posY)
 			goldSquares[(int)posX][(int)posY] = 0;
 			return 1;
 		}
+	}
+
+	// Refresh reachable squares if necessary
+
+	if (refreshTimer == 0)
+	{
+		for (int y = 0; y < Y_NODES; y++)
+		{
+			for (int x = 0; x < X_NODES; x++)
+			{
+				reachableSquares[x][y] = 0;
+			}
+		}
+
+		refreshTimer = 30;
 	}
 
 	UpdateMovementVariables(posX, posY, pixelPosX, pixelPosY);
@@ -722,7 +737,7 @@ bool FindGold(double posX, double posY)
 		for (int x = 0; x < X_NODES; x++)
 		{
 			// If the square contains gold and has not yet been proven to be unreachable
-			if (reachableSquares[x][y] != 2 && goldSquares[x][y] == 1)
+			if (reachableSquares[x][y] != 1 && goldSquares[x][y] == 1)
 			{
 				if (IsSquareReachable(posX, posY, x, y))
 					reachableSquares[x][y] = 2; // A value of 2 indicates that the square contains gold and is reachable
