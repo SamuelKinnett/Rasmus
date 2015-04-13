@@ -30,33 +30,34 @@
 #define RIGHT 1
 
 #pragma endregion
-
+ 
 #pragma region Global Variables
 
-bool canGoLeft;			//Can the bot go left?
-bool canGoRight;		//Can the bot go right?
-bool canJumpLeft;		//Can the bot jump left?
-bool canJumpRight;		//Can the bot jump right?
-bool canJumpGrabLeft;	//Can the bot jump left and grab a ledge?
-bool canJumpGrabRight;	//Can the bot jump right and grab a ledge?
+bool canGoLeft;			// Can the bot go left?
+bool canGoRight;		// Can the bot go right?
+bool canJumpLeft;		// Can the bot jump left?
+bool canJumpRight;		// Can the bot jump right?
+bool canJumpGrabLeft;	// Can the bot jump left and grab a ledge?
+bool canJumpGrabRight;	// Can the bot jump right and grab a ledge?
 
-int jumpTimer;			//used to ensure the bot holds the jump key to climb ledges.
+int jumpTimer;			// Used to ensure the bot holds the jump key to climb ledges.
 
-bool walkSpikeLeft;		//Will the bot hit a spike if he moves left?
-bool walkSpikeRight;	//Will the bot hit a spike if he moves right? 
-bool jumpSpikeLeft;		//Will the bot hit a spike if he jumps left?
-bool jumpSpikeRight;	//Will the bot hit a spike if he moves right?
+bool walkSpikeLeft;		// Will the bot hit a spike if he moves left?
+bool walkSpikeRight;	// Will the bot hit a spike if he moves right? 
+bool jumpSpikeLeft;		// Will the bot hit a spike if he jumps left?
+bool jumpSpikeRight;	// Will the bot hit a spike if he moves right?
 
-bool isClimbing;		//Is the player wallclimbing?
-bool isJumping;			//Is the player jumping?
-int ticks;				//Used to manage repeated pathfinding
-int targetX;			//The current X co-ordinate the bot is trying to reach
-int targetY;			//The current Y co-ordinate the bot is trying to reach
+bool isClimbing;		// Is the player wallclimbing?
+bool isJumping;			// Is the player jumping?
+int ticks;				// Used to manage repeated pathfinding
+int targetX;			// The current X co-ordinate the bot is trying to reach
+int targetY;			// The current Y co-ordinate the bot is trying to reach
 
-int outputTicks;		//To stop the constant fucking stream of console updates
+int outputTicks;		// To stop the constant fucking stream of console updates
 
-int visitedSquares[X_NODES][Y_NODES];	//Stores what squares the bot has visited
-int goldSquares[X_NODES][Y_NODES];		//Stores what squares contain gold
+int visitedSquares[X_NODES][Y_NODES];	// Stores what squares the bot has visited
+int goldSquares[X_NODES][Y_NODES];		// Stores what squares contain gold
+int reachableSquares[X_NODES][Y_NODES]; // Stores what gold squares the bot can reach
 
 #pragma endregion
 
@@ -458,6 +459,57 @@ bool SquareVisited(double posX, double posY)
 	return (visitedSquares[(int)posX][(int)posY] == 1);
 }
 
+// Simulates pathfinding to determine whether a square can be reached by the bot
+bool IsSquareReachable(double posX, double posY, double targetX, double targetY)
+{
+	double tempNodeX = posX;
+	double tempNodeY = posY;
+	double nextNodeX;
+	double nextNodeY;
+
+	// distanceY stores the current difference between two points in the Y axis to try and identify impossible climbs.
+	int distanceY = 0;
+	// vertical is true if the path goes vertically upwards
+	bool vertical = false;
+
+	// first, we pathfind to the target square
+	Pathfind(tempNodeX, tempNodeY, targetX, targetY);
+
+	// now, we simulate moving along the path
+	while (tempNodeX != targetX && tempNodeY != targetY)
+	{
+		nextNodeX = GetNextPathXPos(tempNodeX, tempNodeY, NODE_COORDS);
+		nextNodeY = GetNextPathYPos(tempNodeX, tempNodeY, NODE_COORDS);
+		
+		if (vertical)
+		{
+			distanceY += tempNodeY - nextNodeY; // add the distance to the distance variable
+
+			// if the bot would have to jump higher than two squares, the square can't be reached.
+			if (distanceY >= 2)
+			{
+				return false;
+			}
+		}
+
+		if (nextNodeX == tempNodeX)
+		{
+			vertical = true;
+			distanceY = tempNodeY - nextNodeY;
+		}
+		else
+		{
+			vertical = false;
+			distanceY = 0;
+		}
+
+		tempNodeX = nextNodeX;
+		tempNodeY = nextNodeY;
+	}
+
+	return true;
+}
+
 #pragma endregion
 
 #pragma region Navigation
@@ -557,11 +609,28 @@ bool FindGold(double posX, double posY)
 	double distance;
 	bool goldFound = false;
 
+	// Calculate which gold pieces are reachable
+
 	for (int y = 0; y < Y_NODES; y++)
 	{
 		for (int x = 0; x < X_NODES; x++)
 		{
-			if (goldSquares[x][y] == 1)
+			// If the square contains gold and has not yet been checked for reachability
+			if (reachableSquares[x][y] == 0 && goldSquares[x][y] == 1)
+			{
+				if (IsSquareReachable(posX, posY, x, y))
+					reachableSquares[x][y] = 2; // A value of 2 indicates that the square contains gold and is reachable
+				else
+					reachableSquares[x][y] = 1; // A value of 1 indicates that the square contains gold but is not reachable
+			}
+		}
+	}
+
+	for (int y = 0; y < Y_NODES; y++)
+	{
+		for (int x = 0; x < X_NODES; x++)
+		{
+			if (goldSquares[x][y] == 1 && reachableSquares[x][y] == 2)
 			{
 				goldFound = true;
 

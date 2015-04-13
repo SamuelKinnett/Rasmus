@@ -68,6 +68,7 @@ SPELUNKBOT_API double GetAttack(void);
 void UpdateMovementVariables(double posX, double posY, double pixelPosX, double pixelPosY);
 void UpdateStatusVariables();
 void PopulateGoldMap();
+bool IsSquareReachable(double posX, double posY, double targetX, double targetY);
 
 void Pathfind(double posX, double posY, double targetX, double targetY);
 void Navigate(double posX, double posY);
