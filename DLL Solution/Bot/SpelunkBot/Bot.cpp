@@ -48,6 +48,7 @@ bool jumpSpikeLeft;		//Will the bot hit a spike if he jumps left?
 bool jumpSpikeRight;	//Will the bot hit a spike if he moves right?
 
 bool isClimbing;		//Is the player wallclimbing?
+bool isJumping;			//Is the player jumping?
 int ticks;				//Used to manage repeated pathfinding
 int targetX;			//The current X co-ordinate the bot is trying to reach
 int targetY;			//The current Y co-ordinate the bot is trying to reach
@@ -84,6 +85,8 @@ SPELUNKBOT_API double Initialise(void)
 	_goLeft = false;
 	_jump = false;
 	_attack = false;
+
+	isJumping = false;
 	return 1;
 }
 
@@ -133,7 +136,7 @@ SPELUNKBOT_API double Update(double posX, double posY)
 	//UpdateStatusVariables();
 	PopulateGoldMap();
 
-		if (jumpTimer == 0)
+	if (jumpTimer == 0)
 	{
 		_jump = false;
 		if (_hasGoal)
@@ -150,6 +153,16 @@ SPELUNKBOT_API double Update(double posX, double posY)
 
 	#pragma region Wait for Events
 
+	if (IsEnemyInNode(posX + 1, posY, NODE_COORDS) || IsEnemyInNode(posX - 1, posY, NODE_COORDS))
+	{
+		_attack = true;
+		_waitTimer = 5;
+	}
+	else
+	{
+		_attack = false;
+	}
+
 	if (_waitTimer > 0)
 	{
 		if (isClimbing)
@@ -158,7 +171,7 @@ SPELUNKBOT_API double Update(double posX, double posY)
 				_goRight = true;
 			else
 				_goLeft = true;
-			_jump = true;
+				_jump = true;
 			if (_waitTimer == 1)
 				isClimbing = false;
 
@@ -167,19 +180,19 @@ SPELUNKBOT_API double Update(double posX, double posY)
 			return 1;
 		}
 
-		if (_jump = false)
+		if (_jump == false && !_spIsInAir)
 		{
 			_goLeft = false;
 			_goRight = false;
 		}
-		--_waitTimer;
 
-		// Overriden by combat
-		if (IsEnemyInNode(posX + 1, posY, NODE_COORDS) || IsEnemyInNode(posX - 1, posY, NODE_COORDS))
+		if (isJumping && !_spIsInAir)
 		{
-			_attack = true;
-			_waitTimer = 10;
+			_waitTimer = 0;
+			isJumping = false;
+			return 1;
 		}
+		--_waitTimer;
 
 		return 1;
 	}
@@ -260,20 +273,18 @@ SPELUNKBOT_API double Update(double posX, double posY)
 					Walk(LEFT);
 				else if (canJumpLeft && IsJumpSpikeLeft)
 					Jump(LEFT);
-
-				//TODO: Check for enemies
 			}
-			//TODO: Check for enemies
 		}
 
-		//Let's not forget the Y-axis!
-
-		/*
-		if (posY < tempTargetY + 0.5)
+		//Let's not forget the Y-axis for those bastard ladders!
+		//Seriously, fuck ladders
+		
+		if (posY > tempTargetY + 0.5 && posX == tempTargetX + 0.5)
 		{
 			_jump = true;
+			jumpTimer = 1;
 		}
-		*/
+		
 
 		//Finally, update the pathfinding every 30 ticks to prevent the bot getting stuck in stupid places
 		if (ticks == 0)
@@ -322,6 +333,8 @@ void UpdateMovementVariables(double posX, double posY, double pixelPosX, double 
 	canJumpRight = CanJumpRight(posX, posY);
 	canJumpGrabLeft = CanJumpGrabLeft(posX, posY);
 	canJumpGrabRight = CanJumpGrabRight(posX, posY);
+
+	_spIsInAir = (IsNodePassable(pixelPosX, pixelPosY + 10, PIXEL_COORDS));
 }
 
 // This method updates the status variables about Apsalus' environment
@@ -624,7 +637,8 @@ void Jump(double direction)
 		_goLeft = false;
 		_jump = true;
 
-		jumpTimer = 10;
+		isJumping = true;
+		jumpTimer = 1;
 		_waitTimer = 20;
 	}
 	else
@@ -637,7 +651,8 @@ void Jump(double direction)
 		_goRight = false;
 		_jump = true;
 
-		jumpTimer = 10;
+		isJumping = true;
+		jumpTimer = 1;
 		_waitTimer = 20;
 	}
 }
