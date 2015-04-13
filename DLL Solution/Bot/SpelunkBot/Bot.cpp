@@ -40,6 +40,8 @@ bool canJumpRight;		// Can the bot jump right?
 bool canJumpGrabLeft;	// Can the bot jump left and grab a ledge?
 bool canJumpGrabRight;	// Can the bot jump right and grab a ledge?
 
+bool goalCurrentlyReachable;	// Used to detect if the goal can currently be reached. If the fog map has not been properly cleared, for example, it may not be possible to pathfind to the exit.
+
 int jumpTimer;			// Used to ensure the bot holds the jump key to climb ledges.
 
 bool walkSpikeLeft;		// Will the bot hit a spike if he moves left?
@@ -87,6 +89,8 @@ SPELUNKBOT_API double Initialise(void)
 	_jump = false;
 	_attack = false;
 
+	goalCurrentlyReachable = false;
+
 	isJumping = false;
 	return 1;
 }
@@ -111,10 +115,12 @@ SPELUNKBOT_API double Update(double posX, double posY)
 	// Update visited squares
 	visitedSquares[(int)posX][(int)posY] = 1;
 
+	std::cout << "In air = " << _spIsInAir << std::endl;
+
 	if (outputTicks == 0)
 	{
 		std::cout << "X = " << posX << "\t" << "Y = " << posY << std::endl;
-		outputTicks = 20;
+		outputTicks = 10;
 	}
 	else
 		--outputTicks;
@@ -140,11 +146,13 @@ SPELUNKBOT_API double Update(double posX, double posY)
 	if (jumpTimer == 0)
 	{
 		_jump = false;
+		/*
 		if (_hasGoal)
 		{
 			Pathfind(posX, posY, targetX, targetY);
 			ticks = 30;
 		}
+		*/
 		jumpTimer = -1;
 	}
 	else
@@ -197,6 +205,15 @@ SPELUNKBOT_API double Update(double posX, double posY)
 
 		return 1;
 	}
+	else
+	{
+		if (_hasGoal)
+		{
+			Pathfind(posX, posY, targetX, targetY);
+			ticks = 30;
+		}
+		_waitTimer = -1;
+	}
 
 	#pragma endregion
 
@@ -229,12 +246,6 @@ SPELUNKBOT_API double Update(double posX, double posY)
 			goldSquares[(int)posX][(int)posY] = 0;
 			return 1;
 		}
-		//if the square isn't reachable, let's cancel the pathfinding
-		if (!IsSquareReachable(posX, posY, targetX, targetY))
-		{
-			_hasGoal = false;
-			return 0;
-		}
 		//otherwise, let's move towards the next node in the path
 		double tempTargetX = GetNextPathXPos(pixelPosX, pixelPosY, PIXEL_COORDS);
 		double tempTargetY = GetNextPathYPos(pixelPosX, pixelPosY, PIXEL_COORDS);
@@ -242,51 +253,120 @@ SPELUNKBOT_API double Update(double posX, double posY)
 		if (outputTicks % 5 == 0)
 			std::cout << "Target X = " << tempTargetX << "\t" << "Target Y = " << tempTargetY << std::endl;
 
+		// First of all, let's check to see if the pathfinding has given us an impossible jump
+		if (posX == tempTargetX + 0.5 && posY - tempTargetY + 0.5 >= 2)
+		{
+			// If it has, we will ignore it for now and try to move into a (hopefully) more advantageous position
+			_hasGoal = false;
+			Navigate(posX, posY);
+		}
+
+		#pragma region Movement Tree
+
 		if (posX < tempTargetX + 0.5)
 		{
-			if (canJumpGrabRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 2))
-				JumpGrab(RIGHT);
-			else if (canGoRight && IsWalkSpikeRight && !SquareVisited(posX + 1, posY))
-				Walk(RIGHT);
-			else if (canJumpRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 1))
-				Jump(RIGHT);
-			//TODO: Check for enemies
+			//If we're also below the target square, let's prioritise jumping
+			if (posY > tempTargetY + 0.5)
+			{
+				if (canJumpGrabRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 2))
+					JumpGrab(RIGHT);
+				else if (canGoRight && IsWalkSpikeRight && !SquareVisited(posX + 1, posY))
+					Walk(RIGHT);
+				else if (canJumpRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 1))
+					Jump(RIGHT);
+				else
+				{
+					// If there are no 'new' routes to take
+					if (canJumpGrabRight && IsJumpSpikeRight)
+						JumpGrab(RIGHT);
+					else if (canGoRight && IsWalkSpikeRight)
+						Walk(RIGHT);
+					else if (canJumpRight && IsJumpSpikeRight)
+						Jump(RIGHT);
+				}
+			}
 			else
 			{
-				// If there are no 'new' routes to take
-				if (canJumpGrabRight && IsJumpSpikeRight)
-					JumpGrab(RIGHT);
-				else if (canGoRight && IsWalkSpikeRight)
+				//Otherwise, we'll prioritise walking normally.
+				if (canGoRight && IsWalkSpikeRight && !SquareVisited(posX + 1, posY))
 					Walk(RIGHT);
-				else if (canJumpRight && IsJumpSpikeRight)
+				else if (canJumpRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 1))
 					Jump(RIGHT);
-				//TODO: Check for enemies
+				else if (canJumpGrabRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 2))
+					JumpGrab(RIGHT);
+				else
+				{
+
+					// If there are no 'new' routes to take
+					if (canGoRight && IsWalkSpikeRight)
+						Walk(RIGHT);
+					else if (canJumpRight && IsJumpSpikeRight)
+						Jump(RIGHT);
+					else if (canJumpGrabRight && IsJumpSpikeRight)
+						JumpGrab(RIGHT);
+				}
 			}
 		}
 		else
 		{
-			if (canJumpGrabLeft && IsJumpSpikeLeft && !SquareVisited(posX - 1, posY - 2))
-				JumpGrab(LEFT);
-			else if (canGoLeft && IsWalkSpikeLeft && !SquareVisited(posX - 1, posY))
-				Walk(LEFT);
-			else if (canJumpLeft && IsJumpSpikeLeft && !SquareVisited(posX - 1, posY - 1))
-				Jump(LEFT);
+			//If we're also below the target square, let's prioritise jumping
+			if (posY > tempTargetY + 0.5)
+			{
+				if (canJumpGrabRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 2))
+					JumpGrab(LEFT);
+				else if (canGoRight && IsWalkSpikeRight && !SquareVisited(posX + 1, posY))
+					Walk(LEFT);
+				else if (canJumpRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 1))
+					Jump(LEFT);
+				else
+				{
+					// If there are no 'new' routes to take
+					if (canJumpGrabRight && IsJumpSpikeRight)
+						JumpGrab(LEFT);
+					else if (canGoRight && IsWalkSpikeRight)
+						Walk(LEFT);
+					else if (canJumpRight && IsJumpSpikeRight)
+						Jump(LEFT);
+				}
+			}
 			else
 			{
-				// If there are no 'new' routes to take
-				if (canJumpGrabLeft && IsJumpSpikeLeft)
-					JumpGrab(LEFT);
-				else if (canGoLeft && IsWalkSpikeLeft)
+				//Otherwise, we'll prioritise walking normally.
+				if (canGoRight && IsWalkSpikeRight && !SquareVisited(posX + 1, posY))
 					Walk(LEFT);
-				else if (canJumpLeft && IsJumpSpikeLeft)
+				else if (canJumpRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 1))
 					Jump(LEFT);
+				else if (canJumpGrabRight && IsJumpSpikeRight && !SquareVisited(posX + 1, posY - 2))
+					JumpGrab(LEFT);
+				else
+				{
+
+					// If there are no 'new' routes to take
+					if (canGoRight && IsWalkSpikeRight)
+						Walk(LEFT);
+					else if (canJumpRight && IsJumpSpikeRight)
+						Jump(LEFT);
+					else if (canJumpGrabRight && IsJumpSpikeRight)
+						JumpGrab(LEFT);
+				}
 			}
 		}
 
-		//Let's not forget the Y-axis for those bastard ladders!
+		#pragma endregion
+
+		/*
+		//jump if necessary
+		if (posY < tempTargetY + 0.5)
+		{
+			_jump = true;
+			jumpTimer = 2;
+		}
+		*/
+
+		//Let's not forget those bastard ladders!
 		//Seriously, fuck ladders
 		
-		if (posY > tempTargetY + 0.5 && posX == tempTargetX + 0.5)
+		if (GetNodeState(posX, posY, NODE_COORDS) == spLadder && posY > tempTargetY + 0.5 && posX == tempTargetX + 0.5)
 		{
 			_jump = true;
 			jumpTimer = 1;
@@ -300,6 +380,11 @@ SPELUNKBOT_API double Update(double posX, double posY)
 			{
 				Pathfind(posX, posY, targetX, targetY);
 				ticks = 30;
+			}
+			//if the square isn't reachable, let's cancel the pathfinding
+			if (!IsSquareReachable(posX, posY, targetX, targetY))
+			{
+				_hasGoal = false;
 			}
 		}
 		else
@@ -481,27 +566,31 @@ bool IsSquareReachable(double posX, double posY, double targetX, double targetY)
 	// first, we pathfind to the target square
 	Pathfind(tempNodeX, tempNodeY, targetX, targetY);
 
+	std::cout << "calculating if target (" << targetX << "," << targetY << ") is reachable:" << std::endl;
+
 	// now, we simulate moving along the path
 	while (tempNodeX != targetX && tempNodeY != targetY)
 	{
 		nextNodeX = GetNextPathXPos(tempNodeX, tempNodeY, NODE_COORDS);
 		nextNodeY = GetNextPathYPos(tempNodeX, tempNodeY, NODE_COORDS);
 		
-		if (vertical)
+		if (tempNodeX == nextNodeX && tempNodeY == nextNodeY)
 		{
-			distanceY += tempNodeY - nextNodeY; // add the distance to the distance variable
-
-			// if the bot would have to jump higher than two squares, the square can't be reached.
-			if (distanceY >= 2)
-			{
-				return false;
-			}
+			std::cout << "fog hasn't been fully revealed, square not currently reachable" << std::endl;
+			reachableSquares[(int)targetX][(int)targetY] = 2;
+			return false;
 		}
-
+		
 		if (nextNodeX == tempNodeX)
 		{
 			vertical = true;
-			distanceY = tempNodeY - nextNodeY;
+			distanceY += (tempNodeY - nextNodeY);
+			if (distanceY >= 2)
+			{
+				std::cout << "target unreachable." << std::endl;
+				reachableSquares[(int)targetX][(int)targetY] = 2;
+				return false;
+			}
 		}
 		else
 		{
@@ -511,8 +600,11 @@ bool IsSquareReachable(double posX, double posY, double targetX, double targetY)
 
 		tempNodeX = nextNodeX;
 		tempNodeY = nextNodeY;
+
+		std::cout << "current test node: (" << tempNodeX << "," << tempNodeY << ")" << std::endl;
 	}
 
+	std::cout << "target reached." << std::endl;
 	return true;
 }
 
@@ -595,10 +687,18 @@ bool FindExit(double posX, double posY)
 			{
 				//If we have found the exit, pathfind to it
 				std::cout << "Exit found!" << std::endl;
-				targetX = x;
-				targetY = y;
-				Pathfind(posX, posY, targetX, targetY);
-				return true;
+				if (IsSquareReachable(posX, posY, x, y))
+				{
+					targetX = x;
+					targetY = y;
+					Pathfind(posX, posY, targetX, targetY);
+					return true;
+				}
+				else
+				{
+					std::cout << "Exit not currently reachable." << std::endl;
+					return false;
+				}
 			}
 		}
 	}
@@ -681,7 +781,7 @@ void Walk(double direction)
 {
 	if (direction == RIGHT)
 	{
-		std::cout << "Walking right" << std::endl;
+		//std::cout << "Walking right" << std::endl;
 		//move right
 		_headingLeft = false;
 		_headingRight = true;
@@ -690,7 +790,7 @@ void Walk(double direction)
 	}
 	else
 	{
-		std::cout << "Walking left" << std::endl;
+		//std::cout << "Walking left" << std::endl;
 		//move left
 		_headingRight = false;
 		_headingLeft = true;
@@ -704,7 +804,7 @@ void Jump(double direction)
 {
 	if (direction == RIGHT)
 	{
-		std::cout << "Jumping right" << std::endl;
+		//std::cout << "Jumping right" << std::endl;
 		//jump to the right
 		_headingLeft = false;
 		_headingRight = true;
@@ -718,7 +818,7 @@ void Jump(double direction)
 	}
 	else
 	{
-		std::cout << "Jumping left" << std::endl;
+		//std::cout << "Jumping left" << std::endl;
 		//jump to the left
 		_headingRight = false;
 		_headingLeft = true;
@@ -737,7 +837,7 @@ void JumpGrab(double direction)
 {
 	if (direction == RIGHT)
 	{
-		std::cout << "Jump grabbing right" << std::endl;
+		//std::cout << "Jump grabbing right" << std::endl;
 		//jump grab to the right
 		_headingLeft = false;
 		_headingRight = true;
@@ -749,7 +849,7 @@ void JumpGrab(double direction)
 	}
 	else
 	{
-		std::cout << "Jump grabbing left" << std::endl;
+		//std::cout << "Jump grabbing left" << std::endl;
 		//jump grab to the left
 		_headingRight = false;
 		_headingLeft = true;
@@ -766,8 +866,8 @@ void ChangeDirection(double direction)
 {
 	if (direction == RIGHT)
 	{
-		std::cout << "Changing direction from right to left" << std::endl;
 		//We can't head right, let's change our direction.
+		//std::cout << "Changing direction from right to left" << std::endl;
 		_headingRight = false;
 		_headingLeft = true;
 		_goLeft = true;
@@ -776,7 +876,7 @@ void ChangeDirection(double direction)
 	else
 	{
 		//We can't head left, let's change our direction.
-		std::cout << "Changing direction from left to right" << std::endl;
+		//std::cout << "Changing direction from left to right" << std::endl;
 		_headingLeft = false;
 		_headingRight = true;
 		_goRight = true;
