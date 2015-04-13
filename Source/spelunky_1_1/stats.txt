@@ -5,7 +5,7 @@
 CRATES OPENED:      11
 CHESTS OPENED:      4
 
-IDOLS GRABBED:      66
+IDOLS GRABBED:      64
 IDOLS CONVERTED:    8
 
 DAMSELS GRABBED:    627
@@ -23,7 +23,7 @@ DICE GAMES LOST:    0
 
 LEVEL        DEATHS
 ------------+------------
- 1          | 365
+ 1          | 358
  2          | 17
  3          | 6
  4          | 8
@@ -40,7 +40,7 @@ LEVEL        DEATHS
  15         | 1
  16         | 4
 ------------+------------
- TOTAL      | 433
+ TOTAL      | 426
 
 ENEMY        DEATHS
 ------------+------------
@@ -74,7 +74,7 @@ MISC         DEATHS
  ???        | 0
  ???        | 0
  CRUSHED    | 20
- LONG FALL  | 34
+ LONG FALL  | 33
  SPIKES     | 32
  ???        | 0
  ARROW TRAP | 17
@@ -86,7 +86,7 @@ MISC         DEATHS
 
 ENEMY        KILLS
 ------------+------------
- BAT        | 85
+ BAT        | 84
  SNAKE      | 192
  SPIDER     | 55
  G. SPIDER  | 2
@@ -110,4 +110,4 @@ ENEMY        KILLS
  ???        | 0
  OLMEC      | 1
 ------------+------------
- TOTAL      | 411
+ TOTAL      | 410
